@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="utf-8">
+        <title>Gazetteer</title>
+        <meta name="description" content="shows information regarding countries and cities around the world">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+        <meta name="author" content="Sam Shattock">
+
+
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+        <!-- Bootstrap CSS -->
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.6.1/toastify.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-extra-markers/1.2.1/css/leaflet.extra-markers.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.EasyButton/2.4.0/easy-button.min.css">
+        <link rel="stylesheet" href="libs/css/style.css">
+
+    
+    </head>
+
+    <body>
+
+        <div id="preloader">
+            <h1>We're getting the world ready for you to explore!</h1>
+            <div id="globe"></div>
+        </div>
+
+        <span id="selectContainer">
+            <label for="countrySelect">Select Country</label>
+            <select name='countrySelect' id="countrySelect" class="form-select shadow-sm">
+            <!-- populate from an AJAX CALL to a PHP routine that returns a JSON object that is an array of just ISO codes and names from countryBorders.geo.json -->
+            <option value="" selected>Select Country</option>
+            </select>
+            <input type="hidden" id="selectedCountry" value="GBR" />
+        </span>
+        
+        <div id="map"></div>
+    
+        
+        <input type="hidden" id="selectedCountry" value="">
+        <button id="showCountryInfoBtn" style="display: none;">Show Country Info</button>
+
+        <!-- Bootstrap Modals -->
+        <div class="modal fade" id="countryInfoModal" tabindex="-1" role="dialog" aria-labelledby="countryInfoModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="countryInfoModalLabel">Country Information</h5>
+                        <img id="infoFlag" src="" alt="Country Flag" class="countryFlag d-none">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <table class="table table-striped">
+                            <tr>
+                                <th>Country Name</th>
+                                <td id="countryName"></td>
+                            </tr>
+                            <tr>
+                                <th>Capital</th>
+                                <td id="capital"></td>
+                            </tr>
+                            <tr>
+                                <th>Population</th>
+                                <td id="population"></td>
+                            </tr>
+                            <tr>
+                                <th>Area (sq km)</th>
+                                <td id="areaInSqKm"></td>
+                            </tr>
+                            <tr>
+                                <th>Currency Code</th>
+                                <td id="currencyCode"></td>
+                            </tr>            
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="airportsInfoModal" tabindex="-1" role="dialog" aria-labelledby="airportsInfoModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="airportsInfoModalLabel">Airport Information</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <table class="table table-striped">
+                            <tr>
+                                <th>Airport Name</th>
+                                <td id="airportName"></td>
+                            </tr>
+                            <tr>
+                                <th>Airport Type</th>
+                                <td id="airportType"></td>
+                            </tr>
+                            <tr>
+                                <th>GPS Code</th>
+                                <td id="gpsCode"></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>,
+        
+
+        <div class="modal fade" id="volcanoInfoModal" tabindex="-1" role="dialog" aria-labelledby="volcanoInfoModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="volcanoInfoModalLabel">Volcano Information</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <table class="table table-striped">
+                            <tr>
+                                <th>Volcano Name</th>
+                                <td id="volcanoName"></td>
+                            </tr>
+                            <tr>
+                                <th>Subregion</th>
+                                <td id="volcanoSubregion"></td>
+                            </tr>
+                            <tr>
+                                <th>Elevation</th>
+                                <td id="volcanoElevation"></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="modal fade" id="weatherInfoModal" tabindex="-1" role="dialog" aria-labelledby="weatherInfoModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                    <h5 class="modal-title" id="weatherInfoModalLabel">Weather Information</h5>
+                    <input type="hidden" id="selectedCountryName" value="">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                    </div>
+                    <div class="modal-body">
+                        <h6>Current Weather:</h6>
+                        <table class="table table-bordered">
+                            <tbody>
+                                <tr>
+                                    <td>Temperature</td>
+                                    <td id="currentTemperature"></td>
+                                </tr>
+                                <tr>
+                                    <td>Conditions</td>
+                                    <td id="currentConditions"></td>
+                                </tr>
+                                <tr>
+                                    <td>Humidity</td>
+                                    <td id="currentHumidity"></td>
+                                </tr>
+                                <tr>
+                                    <td>Wind Speed</td>
+                                    <td id="currentWindSpeed"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <h5>Forecast:</h5>
+                        <table class="table table-bordered" id="forecastTable">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Temperature</th>
+                                    <th>Conditions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="weatherForecast">
+                                <!-- Forecast rows will be added here dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="cityInfoModal" tabindex="-1" role="dialog" aria-labelledby="cityInfoModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+                <div class="modal-content" id="allCitiesModalContent">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="cityInfoModalLabel">City Information</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <table class="table table-striped">
+                            <tr>
+                                <th>City Name</th>
+                                <td id="cityName"></td>
+                            </tr>
+                            <tr>
+                                <th>Population</th>
+                                <td id="cityPopulation"></td>
+                            </tr>
+                            <tr>
+                                <th>Landmark</th>
+                                <td><img id="cityLandmark" src="" alt="City Landmark" width="100%"></td>
+                            </tr>
+                            <tr>
+                                <th>Fun Fact</th>
+                                <td id="cityFact"></td>
+                            </tr>
+                            <tr>
+                                <th>Wikipedia Link</th>
+                                <td><a href="#" id="cityWikiLink" target="_blank">Visit Wikipedia</a></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+        <!-- Bootstrap JS, Popper.js, and jQuery -->
+        <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+        <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.2/jquery.min.js"></script>-->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.6.1/toastify.min.js"></script> 
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script> 
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-extra-markers/1.2.1/js/leaflet.extra-markers.js"></script> 
+        <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/js/bootstrap.min.js"></script> -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.EasyButton/2.4.0/easy-button.min.js"></script> 
+        <script src="libs/js/script.js"></script>
+    </body>
+</html>

@@ -45,15 +45,19 @@ $(document).ready(function () {
     let volcanoMarkers = [];
     let airportMarkers = [];
 
-   // Function to clear all markers
-function clearMarkers() {
+   // Function to clear markers
+   function clearCityAndAirportMarkers() {
     cityMarkers.forEach(marker => marker.remove());
     airportMarkers.forEach(marker => marker.remove());
-    volcanoMarkers.forEach(marker => marker.remove());
     cityMarkers = [];
     airportMarkers = [];
-    volcanoMarkers = [];
-}
+    }
+    
+    // Function to clear volcano markers only
+    function clearVolcanoMarkers() {
+        volcanoMarkers.forEach(marker => marker.remove());
+        volcanoMarkers = [];
+    }
 
     //button for country info
     L.easyButton("fa-info", function (btn, map) {
@@ -87,54 +91,63 @@ function clearMarkers() {
         }
     }).addTo(map);
 
-    // Button for volcano info
-    L.easyButton("fa-solid fa-volcano", function(btn, map) {
-        var selectedCountryName = $('#countrySelect option:selected').text();  // Get the country name (the visible text)
-        
-
-        if (selectedCountryName) {
-            if (volcanoMarkers.length > 0) {
-                // Toggle existing markers
-                toggleMarkers(volcanoMarkers);
-            } else {
-                // Fetch and add new markers
-                fetchVolcanoInfo(selectedCountryName);
-            }
-        } else {
-            alert("Please select a country first.");
-        }
-
-    }).addTo(map);
-
-
-    //button for airport info
-    L.easyButton("fa-solid fa-plane-departure", function (btn, map) {
+    // Button for news info
+    L.easyButton('fa-newspaper', function (btn, map) {
         var selectedCountry = $('#selectedCountry').val();
         if (selectedCountry) {
-            if (airportMarkers.length > 0) {
-                // Toggle existing markers
-                toggleMarkers(airportMarkers);
-            } else {
-                fetchAirportsInfo(selectedCountry).then(showAirportsInfoModal);
-            } 
+            fetchNews(selectedCountry);
         } else {
-            alert("Please select a country first.");
+            alert('Please select a country first.');
         }
+    }).addTo(map);
+    
+    // Easy Button for currency info
+    L.easyButton('fa-coins', function () {
+        var selectedCountryCode = $('#countrySelect').val(); // Get the selected country code
+    
+        if (!selectedCountryCode) {
+            alert("Please select a country first.");
+            return;
+        }
+    
+        fetchCurrencyInfo(selectedCountryCode);
+    }).addTo(map);
+    
+
+    // Button for volcano info
+    L.easyButton("fa-solid fa-volcano", function (btn, map) {
+        var selectedCountryName = $('#countrySelect option:selected').text(); // Get the country name (visible text)
+
+
+        if (!selectedCountryName) {
+            alert("Please select a country first.");
+            return;
+        }
+
+        // Clear existing city and airport markers (but leave volcano markers intact)
+        clearCityAndAirportMarkers();
+
+        // Clear volcano markers before fetching new data for the selected country
+        clearVolcanoMarkers();  // Only clear volcano markers
+
+        // Fetch new volcano data and add new markers
+        fetchVolcanoInfo(selectedCountryName);
     }).addTo(map);
 
-    //button for city info
-    L.easyButton("fa-solid fa-city", function(btn, map) {
-        var selectedCountry = $('#countrySelect option:selected').text();
-        if (selectedCountry) {
-            if(cityMarkers.length > 0) {
-                toggleMarkers(cityMarkers);
-            } else {
-            fetchCityInfo(selectedCountry);
-            }
-        } else {
-            alert("Please select a country first.");
-        }
-    }).addTo(map);
+    // LayerGroups for cities and airports
+    const cityLayerGroup = L.layerGroup();
+    const airportLayerGroup = L.layerGroup();
+
+    // Marker Clusters for better visualization
+    const cityClusterGroup = L.markerClusterGroup();
+    const airportClusterGroup = L.markerClusterGroup();
+
+    // Add Layer Control
+    const overlayMaps = {
+        "Cities": cityClusterGroup,
+        "Airports": airportClusterGroup,
+    };
+    L.control.layers(null, overlayMaps, { collapsed: false }).addTo(map);
 
     //load borders before populating the dropdown information
     loadCountryBorders().then(() => {
@@ -146,6 +159,15 @@ function clearMarkers() {
         if (selectedCountry) {
             $('#selectedCountry').val(selectedCountry);
             applyCountryBorder(map, selectedCountry);
+        }
+        if (selectedCountry) {
+            // Clear previous data
+            cityClusterGroup.clearLayers();
+            airportClusterGroup.clearLayers();
+    
+            // Fetch new data and populate markers
+            fetchCityInfo(selectedCountry);
+            fetchAirportsInfo(selectedCountry);
         }
     });
 
@@ -307,23 +329,35 @@ $('#selectedCountry').on('change', function() {
     function showWeatherInfoModal(data) {
         console.log('Showing weather info modal...');
         if (data && data.currentWeather && data.currentWeather.main && data.forecast && data.forecast.list) {
-            $('#currentTemperature').text(data.currentWeather.main.temp + ' °C');
-            $('#currentConditions').text(data.currentWeather.weather[0].description);
-            $('#currentHumidity').text(data.currentWeather.main.humidity + ' %');
-            $('#currentWindSpeed').text(data.currentWeather.wind.speed + ' m/s');
+            const currentIcon = data.currentWeather.weather[0].icon; // Get the current weather icon code
+            const currentIconUrl = `https://openweathermap.org/img/wn/${currentIcon}@2x.png`; // Construct the URL for the icon
+    
+            $('#currentTemperature').html(`${data.currentWeather.main.temp} °C`);
+            $('#currentConditions').html(`
+                ${data.currentWeather.weather[0].description} 
+                <img src="${currentIconUrl}" alt="Weather Icon" class="weather-icon">
+            `);
+            $('#currentHumidity').text(`${data.currentWeather.main.humidity} %`);
+            $('#currentWindSpeed').text(`${data.currentWeather.wind.speed} m/s`);
     
             const forecastTable = $('#weatherForecast');
             forecastTable.empty(); // Clear previous forecast data
     
             data.forecast.list.forEach(function (forecast, index) {
                 if (index % 8 === 0) { // Show one forecast per day
-                    forecastTable.append(
-                        `<tr>
+                    const forecastIcon = forecast.weather[0].icon; // Get the forecast weather icon code
+                    const forecastIconUrl = `https://openweathermap.org/img/wn/${forecastIcon}@2x.png`; // Construct the URL
+    
+                    forecastTable.append(`
+                        <tr>
                             <td>${forecast.dt_txt}</td>
                             <td>${forecast.main.temp} °C</td>
-                            <td>${forecast.weather[0].description}</td>
-                        </tr>`
-                    );
+                            <td>
+                                ${forecast.weather[0].description} 
+                                <img src="${forecastIconUrl}" alt="Weather Icon" class="weather-icon">
+                            </td>
+                        </tr>
+                    `);
                 }
             });
     
@@ -334,164 +368,195 @@ $('#selectedCountry').on('change', function() {
         }
     }
     
+    function fetchNews(countryCode) {
+        $.ajax({
+            url: "libs/php/news.php",
+            type: "GET",
+            data: { countryCode: countryCode },
+            dataType: "json", // Expect JSON response
+            success: function (articles) {
+                if (!Array.isArray(articles)) {
+                    console.error("Unexpected data format:", articles);
+                    alert("Error fetching news: Unexpected response format.");
+                    return;
+                }
+                updateNewsModal(articles);
+            },
+            error: function (xhr, status, error) {
+                console.error("AJAX error:", status, error);
+                console.error("Response:", xhr.responseText); // Log the full response
+                alert("Failed to fetch news.");
+            },
+        });
+    }
     
-    // Function to retrieve airport information from airports.php
+    function updateNewsModal(articles) {
+        const newsList = document.getElementById('newsList');
+        newsList.innerHTML = ''; // Clear existing content
+    
+        articles.forEach((article) => {
+            const listItem = document.createElement('li');
+            listItem.className = 'list-group-item';
+            listItem.innerHTML = `
+                <h6>${article.title}</h6>
+                <p><strong>Source:</strong> ${article.source || 'Unknown'} | <strong>Published:</strong> ${new Date(article.published_at).toLocaleString()}</p>
+                <p>${article.description || article.snippet || 'No description available.'}</p>
+                ${article.image_url ? `<img src="${article.image_url}" alt="Article image" class="img-fluid mb-2">` : ''}
+                <a href="${article.url}" target="_blank">Read more</a>
+            `;
+            newsList.appendChild(listItem);
+        });
+    
+        $('#newsInfoModal').modal('show'); // Show the modal
+    }
+    
+    function fetchCurrencyInfo(countryCode) {
+        $.ajax({
+            url: "libs/php/currency.php", // Call the PHP script
+            type: "GET",
+            data: { countryCode: countryCode },
+            dataType: "json",
+            success: function (data) {
+                console.log("Currency Info:", data);
+    
+                if (data.error) {
+                    console.error("Error:", data.error);
+                    alert("Error fetching currency info: " + data.error);
+                    return;
+                }
+    
+                // Populate the modal with currency info
+                $('#currency').text(data.currencyCode);
+                $('#currencyName').text(data.currencyName || "Unknown Currency");
+                $('#currencyConverter').html(`
+                    <strong>Exchange Rate (GBP to ${data.currencyCode}):</strong> ${data.exchangeRate}
+                    <br>
+                    <label for="amount">Amount (GBP):</label>
+                    <input type="number" id="amount" class="form-control mb-2" placeholder="Enter amount">
+                    <button id="convertButton" class="btn btn-primary btn-sm">Convert</button>
+                    <p id="convertedAmount" class="mt-2"></p>
+                `);
+    
+                // Add event listener for conversion
+                $('#convertButton').off('click').on('click', function () {
+                    var amount = parseFloat($('#amount').val());
+                    if (!isNaN(amount) && amount > 0) {
+                        var converted = amount * data.exchangeRate;
+                        $('#convertedAmount').html(`<strong>Converted Amount:</strong> ${converted.toFixed(2)} ${data.currencyCode}`);
+                    } else {
+                        alert("Please enter a valid amount.");
+                    }
+                });
+    
+                // Show the modal
+                $('#currencyInfoModal').modal('show');
+            },
+            error: function (xhr, status, error) {
+                console.error("AJAX error:", status, error);
+                alert("Failed to fetch currency data.");
+            }
+        });
+    }    
+    
+    
     function fetchAirportsInfo(countryCode) {
-        clearMarkers();
         console.log('Fetching airport info for:', countryCode);
-
+    
+        // Clear previous markers from the cluster group
+        airportClusterGroup.clearLayers();
+    
         return $.ajax({
-            url: 'libs/php/airports.php', // The PHP script that gets airports data
+            url: 'libs/php/airports.php',
             method: 'GET',
             data: { selectedCountry: countryCode },
-            dataType: 'json'
-        }).then(function (response) {
-            console.log('airport info fetch response:', response);
-
+            dataType: 'json',
+        }).then(function(response) {
+            console.log('Airport Data:', response);
+    
             if (response.status.code === 200) {
-                // Add markers for each airport
-                addAirportMarkers(response.features); // Pass the airports data to the function that adds markers
+                addAirportMarkers(response.features);
             } else {
-                throw new Error('Error fetching airport info: ' + response.status.description);
+                console.error('Error fetching airport info:', response.status.description);
             }
-        }).fail(function (xhr, status, error) {
+        }).fail(function(xhr, status, error) {
             console.error('Error fetching airport info:', error);
         });
     }
-
-    // Function to add markers for airports on the map
+    
     function addAirportMarkers(airportsData) {
-
-        // Remove existing markers if any
-        if (airportMarkers.length > 0) {
-            toggleMarkers(airportMarkers);
-            return;
-        }
-
-        airportsData.forEach(function (port) {
-            const lat = port.geometry.coordinates[1]; // Latitude from the GeoJSON structure
-            const lon = port.geometry.coordinates[0]; // Longitude from the GeoJSON structure
+        airportsData.forEach(function(port) {
+            const lat = port.geometry.coordinates[1]; // Latitude
+            const lon = port.geometry.coordinates[0]; // Longitude
             const airportName = port.properties.name || 'N/A';
             const airportType = port.properties.type || 'N/A';
             const gpsCode = port.properties.gps_code || 'N/A';
-
-            // Create a Leaflet marker
-            const marker = L.marker([lat, lon]).addTo(map);
-
-            // Attach a click event listener to the marker to show the modal
-            marker.on('click', function () {
-                populateAirportsModal({
-                    airportName: airportName,
-                    airportType: airportType,
-                    gpsCode: gpsCode
-                });
-            });
-
-            // Add the marker to the array for toggling
-            airportMarkers.push(marker);
-
+    
+            // Create marker
+            const marker = L.marker([lat, lon], {
+                icon: L.divIcon({
+                    className: 'custom-airport-icon',
+                    html: '<i class="fa-solid fa-plane-departure" style="color: #007bff; font-size: 20px;"></i>',
+                    iconSize: [30, 30], // Adjust marker size as needed
+                    iconAnchor: [15, 15], // Anchor the icon at its center
+                }),
+            }).bindPopup(`
+                <b>${airportName}</b><br>
+                Type: ${airportType}<br>
+                GPS Code: ${gpsCode}
+            `);
+    
+            airportClusterGroup.addLayer(marker); // Add marker to the cluster group
         });
+    
+        // Optionally, zoom to show all airport markers
+        map.fitBounds(airportClusterGroup.getBounds());
     }
-
-    // Function to display the fetched airport information in a modal
-    function showAirportsInfoModal(airportsData) {
-        console.log('Showing airport info modal...');
-
-        if (airportsData && airportsData.length > 0) {
-            let airportsTableBody = $('#airportsTable tbody');
-            airportsTableBody.empty(); // Clear existing data
-
-            // Populate table with fetched data (airport names as links)
-            airportsData.forEach(function(port, index) {
-                const airportName = port.properties.name; // Get the port name
-                airportsTableBody.append(`
-                    <tr>
-                        <td><a href="#" class="airport-link" data-index="${index}">${airportName}</a></td>
-                    </tr>
-                `);
-            });
-
-            // Show the modal with the list of airports
-            $('#airportsInfoModal').modal('show');
-
-            // Add click event listeners to airport links
-            $('.airport-link').click(function(e) {
-                e.preventDefault();
-                const index = $(this).data('index');
-                const selectedAirport = airportsData[index]; // Get the corresponding port data
-
-                // Move the map to the airport marker
-                const lat = selectedAirport.geometry.coordinates[1];
-                const lon = selectedAirport.geometry.coordinates[0];
-                map.setView([lat, lon], 10); // Adjust zoom level as needed
-
-                // Show the airport modal (with the table structure you provided)
-                populateAirportsModal({
-                    airportName: selectedAirport.properties.name,
-                    airportType: selectedAirport.properties.type || 'N/A',
-                    gpsCode: selectedAirport.properties.gps_code || 'N/A',
-                });
-            });
-        }
-    }
-
-    // Function to populate the modal with airport information
-    function populateAirportsModal(portData) {
-        $('#airportName').text(portData.airportName);
-        $('#airportType').text(portData.airportType);
-        $('#gpsCode').text(portData.gpsCode);
-
-        // Show the modal
-        $('#airportsInfoModal').modal('show');
-    }
+    
 
 
+    // Function to fetch volcano information for the selected country
     function fetchVolcanoInfo(countryName) {
-        clearMarkers();
-        console.log('Fetching volcano data from PHP for country:', countryName);
-         
+        console.log('Fetching volcano data from PHP for country code:', countryName);
+
         return $.ajax({
-            url: 'libs/php/volcanoData.php',  // PHP script
+            url: 'libs/php/volcanoData.php',  // PHP script to get volcano data
             method: 'GET',
             dataType: 'json',
-            data: { country: countryName },  // Pass the country name as a query parameter
-        }).then(function(response) {
+            data: { country: countryName },  // Pass the country code to the PHP script
+        })
+        .then(function (response) {
             console.log('Volcano data fetch response from PHP:', response);
 
             if (response && response.length > 0) {
-                addVolcanoMarkers(response);  // Add markers for the filtered volcanoes
+                addVolcanoMarkers(response);  // Add markers for the volcanoes in the selected country
             } else {
-               alert('No volcano information available for the selected country.');
+                alert('No volcano information available for the selected country.');
             }
-        }).fail(function(xhr, status, error) {
+        })
+        .fail(function (xhr, status, error) {
             console.error('Error fetching volcano data from PHP:', error);
         });
     }
 
+    // Function to add volcano markers to the map
     function addVolcanoMarkers(volcanoes) {
-
-        if (volcanoMarkers.length > 0) {
-            toggleMarkers(volcanoMarkers);
-            return;
-        }
-
-        volcanoes.forEach(function(volcano) {
+        volcanoes.forEach(function (volcano) {
             const lat = volcano.latitude;
             const lon = volcano.longitude;
             const volcanoName = volcano.vName || 'Unknown';
             const subregion = volcano.subregion || 'Unknown';
             const elevation = volcano.elevation_m || 'Unknown';
-    
-            // Create a custom marker with volcano icon
+
+            // Create a custom marker with a volcano icon
             const volcanoIcon = L.icon({
                 iconUrl: '/project1/libs/resources/volcano.png',  // Path to your volcano icon
                 iconSize: [25, 25],  // Adjust size if needed
             });
-    
+
             const marker = L.marker([lat, lon], { icon: volcanoIcon }).addTo(map);
-    
+
             // When marker is clicked, show the modal with volcano info
-            marker.on('click', function() {
+            marker.on('click', function () {
                 showVolcanoInfoModal({
                     vName: volcanoName,
                     subregion: subregion,
@@ -499,86 +564,70 @@ $('#selectedCountry').on('change', function() {
                 });
             });
 
-            volcanoMarkers.push(marker);
+            volcanoMarkers.push(marker); // Add the marker to the global array
         });
     }
-    
+
+    // Function to show the modal with volcano information
     function showVolcanoInfoModal(volcanoData) {
         $('#volcanoName').text(volcanoData.vName || 'Unknown');
         $('#volcanoSubregion').text(volcanoData.subregion || 'Unknown');
         $('#volcanoElevation').text(volcanoData.elevation_m ? volcanoData.elevation_m + ' meters' : 'Unknown');
-    
+
         // Show the modal
         $('#volcanoInfoModal').modal('show');
     }
-
     function fetchCityInfo() {
-        clearMarkers();
-        const selectedCountry = $('#selectedCountry').val(); // Get the ISO3 code directly from the dropdown
+        const selectedCountry = $('#selectedCountry').val(); // ISO3 code
         console.log(`Fetching top cities by population for country: ${selectedCountry}`);
-
-        if (cityMarkers.length > 0) {
-            // If markers already exist, just toggle them instead of fetching data again
-            toggleMarkers(cityMarkers);
-            return;
-        }
+    
+        // Clear previous markers from the cluster group
+        cityClusterGroup.clearLayers();
     
         $.ajax({
             url: './libs/php/cityData.php',
             type: 'GET',
             dataType: 'json',
-            data: { countryCode: selectedCountry }, // Pass the ISO3 code directly
+            data: { countryCode: selectedCountry },
             success: function(data) {
-                console.log("Data received:", data); // Log the entire response
-        
-                // Directly use the data since it's an array
+                console.log("City Data received:", data);
+    
                 if (Array.isArray(data) && data.length) {
-                    // Populate markers and modal content
-                    let modalContent = "<h3>Largest Cities by Population</h3><ul>";
                     data.forEach(city => {
                         const { name, latitude, longitude, population, is_capital } = city;
-
+    
                         // Create Wikipedia URL
                         const wikiUrl = `https://en.wikipedia.org/wiki/${name.replace(/ /g, '_')}`;
-
+    
                         // Select the appropriate icon based on whether it is the capital
                         const iconUrl = is_capital ? './libs/resources/capital_logo.png' : './libs/resources/wiki_icon.png';
-
-                        // Add marker for each city
+    
+                        // Create marker
                         const marker = L.marker([latitude, longitude], {
                             icon: L.icon({
-                                iconUrl: iconUrl, // Use star icon for capital, wiki icon for others
-                                iconSize: is_capital ? [35, 35] : [30, 30] // Slightly larger for the capital
-                            })
-                        }).addTo(map);
-                            
-                        marker.bindPopup(`
+                                iconUrl: iconUrl,
+                                iconSize: is_capital ? [35, 35] : [30, 30],
+                            }),
+                        }).bindPopup(`
                             <b>${name}</b><br>
                             Population: ${population}<br>
                             <a href="${wikiUrl}" target="_blank">Wikipedia Link</a>
                         `);
-
-                        cityMarkers.push(marker);  // Store the marker in the array
-                        
-                        // Append city info to modal content
-                        modalContent += `<li><b>${name}</b> - Population: ${population}</li>`;
+    
+                        cityClusterGroup.addLayer(marker); // Add marker to the cluster group
                     });
-
-                modalContent += "</ul>";
-                
-                // Show modal with all city data
-                $('#cityInfoModal .modal-body').html(modalContent);
-                $('#cityInfoModal').modal('show');
-
+    
+                    // Optionally, zoom to show all city markers
+                    map.fitBounds(cityClusterGroup.getBounds());
                 } else {
                     console.log("No city data available.");
                 }
             },
-            error: function (error) {
-                console.error("Error fetching city data from PHP:", error);
-            }
+            error: function(error) {
+                console.error("Error fetching city data:", error);
+            },
         });
-    }
+    }    
 
     function applyCountryBorder(map, selectedCountry) {
         console.log('Applying border for:', selectedCountry);
@@ -685,7 +734,7 @@ $('#selectedCountry').on('change', function() {
         if (defaultCountry) {
             applyCountryBorder(map, defaultCountry);
         }
-        // Check the user's location but do not adjust the map's view
+    // Check the user's location but do not adjust the map's view
     navigator.geolocation.getCurrentPosition(
         geolocation,
         handleError,

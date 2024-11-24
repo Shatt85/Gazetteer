@@ -32,7 +32,7 @@
         </div>
 
         <span id="selectContainer">
-            <label for="countrySelect">Select Country</label>
+            <label for="countrySelect" class="visually-hidden">Select Country</label>
             <select name='countrySelect' id="countrySelect" class="form-select shadow-sm">
             <!-- populate from an AJAX CALL to a PHP routine that returns a JSON object that is an array of just ISO codes and names from countryBorders.geo.json -->
             <option value="" selected>Select Country</option>
@@ -207,11 +207,33 @@
             </div>
         </div>
 
-        <div class="modal fade" id="cityInfoModal" tabindex="-1" role="dialog" aria-labelledby="cityInfoModalLabel" aria-hidden="true">
+        <div class="modal fade" id="newsInfoModal" tabindex="-1" role="dialog" aria-labelledby="newsInfoModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-                <div class="modal-content" id="allCitiesModalContent">
+                <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="cityInfoModalLabel">City Information</h5>
+                        <h5 class="modal-title" id="newsInfoModalLabel">Latest News</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <h6>Top News Headlines:</h6>
+                        <ul id="newsList" class="list-group">
+                            <!-- News items will be dynamically added here -->
+                        </ul>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="currencyInfoModal" tabindex="-1" role="dialog" aria-labelledby="currencyInfoModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="currencyInfoModalLabel">Currency Information</h5>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
@@ -219,24 +241,16 @@
                     <div class="modal-body">
                         <table class="table table-striped">
                             <tr>
-                                <th>City Name</th>
-                                <td id="cityName"></td>
+                                <th>Currency Code</th>
+                                <td id="currency"></td>
                             </tr>
                             <tr>
-                                <th>Population</th>
-                                <td id="cityPopulation"></td>
+                                <th>Currency Name</th>
+                                <td id="currencyName"></td>
                             </tr>
                             <tr>
-                                <th>Landmark</th>
-                                <td><img id="cityLandmark" src="" alt="City Landmark" width="100%"></td>
-                            </tr>
-                            <tr>
-                                <th>Fun Fact</th>
-                                <td id="cityFact"></td>
-                            </tr>
-                            <tr>
-                                <th>Wikipedia Link</th>
-                                <td><a href="#" id="cityWikiLink" target="_blank">Visit Wikipedia</a></td>
+                                <th>Currency Converter</th>
+                                <td id="currencyConverter"></td>
                             </tr>
                         </table>
                     </div>
@@ -246,6 +260,9 @@
                 </div>
             </div>
         </div>
+        
+
+        
         
 
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>

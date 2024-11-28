@@ -80,6 +80,12 @@ html, body {
   width: 80%;
 }
 
+.modal-body {
+  max-height: 70vh; /* Limit height to 70% of the viewport height */
+  overflow-y: auto; /* Enable vertical scrolling */
+}
+
+
 .close {
   color: #aaa;
   float: right;

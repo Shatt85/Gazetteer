@@ -1,4 +1,9 @@
 <?php
+ini_set('display_errors', 'On');
+error_reporting(E_ALL);
+
+$executionStartTime = microtime(true);
+
 header('Content-Type: application/json');
 
 $countryCode = $_GET['countryCode'] ?? null;
@@ -8,7 +13,6 @@ if (!$countryCode) {
     exit;
 }
 
-// Path to the countryBorders.geo.json file
 $jsonFile = __DIR__ . '/../resources/countryBorders.geo.json';
 
 // Decode the geoJSON file

@@ -1,5 +1,10 @@
 <?php
 
+ini_set('display_errors', 'On');
+error_reporting(E_ALL);
+
+$executionStartTime = microtime(true);
+
 header('Content-Type: application/json');
 
 if (!isset($_GET['countryCode']) || empty($_GET['countryCode'])) {
@@ -7,12 +12,12 @@ if (!isset($_GET['countryCode']) || empty($_GET['countryCode'])) {
     exit;
 }
 
-$countryCode = strtoupper($_GET['countryCode']); // Assuming this is ISO3
+$countryCode = strtoupper($_GET['countryCode']);
 
 // Simulate calling countryInfo.php internally
 ob_start();
-$_GET['countryCode'] = $countryCode; // Pass the country code as if it's an HTTP request
-include __DIR__ . "/countryInfo.php"; // Adjust the path based on your folder structure
+$_GET['countryCode'] = $countryCode; 
+include __DIR__ . "/countryInfo.php";
 $countryInfoResponse = ob_get_clean();
 
 if (!$countryInfoResponse) {

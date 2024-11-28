@@ -16,19 +16,37 @@ var satellite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/service
     attribution: "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
 });
 
+// LayerGroups for cities and airports
+var cityLayerGroup = L.layerGroup();
+var airportLayerGroup = L.layerGroup();
+    
+// Marker Clusters for better visualization
+var cityClusterGroup = L.markerClusterGroup();
+var airportClusterGroup = L.markerClusterGroup();
+
 var basemaps = {
     "Streets": streets,
-    "Satellite": satellite
+    "Satellite": satellite,
 };
+
+var overlays = {
+    "Cities": cityClusterGroup,
+    "Airports": airportClusterGroup
+}
+
+// Handle errors for AJAX or other operations
+function handleError(error) {
+    console.error('Error:', error.message);
+}
 
 // Initialise map and add controls once DOM is ready
 $(document).ready(function () {
     console.log('Document ready');
     map = L.map("map", {
-        layers: [streets]
+        layers: [streets],
     }).setView([54.5, -4], 6);
 
-    layerControl = L.control.layers(basemaps).addTo(map);
+    layerControl = L.control.layers(basemaps, overlays).addTo(map);
 
     function toggleMarkers(markerArray) {
         markerArray.forEach(marker => {
@@ -61,8 +79,10 @@ $(document).ready(function () {
 
     //button for country info
     L.easyButton("fa-info", function (btn, map) {
-        var selectedCountry = $('#selectedCountry').val();
+        var selectedCountry = $('#selectedCountry').val() || $('#selectedCountryCopy').val();
         if (selectedCountry) {
+            $('#selectedCountry').val(selectedCountry); // First hidden input 
+            $('#selectedCountryCopy').val(selectedCountry); // Second hidden input
             fetchCountryInfo(selectedCountry).then(showCountryInfoModal);
         } else {
             alert("Please select a country first.");
@@ -71,8 +91,10 @@ $(document).ready(function () {
 
     // Button for weather info
     L.easyButton("fa-solid fa-cloud-sun-rain", function (btn, map) {
-        var selectedCountry = $('#selectedCountry').val();
+        var selectedCountry = $('#selectedCountry').val() || $('#selectedCountryCopy').val();
         if (selectedCountry) {
+            $('#selectedCountry').val(selectedCountry); // First hidden input 
+            $('#selectedCountryCopy').val(selectedCountry); // Second hidden input
             fetchCountryInfo(selectedCountry)
                 .then(function (countryInfo) {
                     if (!countryInfo.capital) {
@@ -93,8 +115,10 @@ $(document).ready(function () {
 
     // Button for news info
     L.easyButton('fa-newspaper', function (btn, map) {
-        var selectedCountry = $('#selectedCountry').val();
+        var selectedCountry = $('#selectedCountry').val() || $('#selectedCountryCopy').val();
         if (selectedCountry) {
+            $('#selectedCountry').val(selectedCountry); // First hidden input 
+            $('#selectedCountryCopy').val(selectedCountry); // Second hidden input
             fetchNews(selectedCountry);
         } else {
             alert('Please select a country first.');
@@ -103,7 +127,7 @@ $(document).ready(function () {
     
     // Easy Button for currency info
     L.easyButton('fa-coins', function () {
-        var selectedCountryCode = $('#countrySelect').val(); // Get the selected country code
+        var selectedCountryCode = $('#countrySelect').val() || $('#selectedCountryCopy').val(); // Get the selected country code
     
         if (!selectedCountryCode) {
             alert("Please select a country first.");
@@ -134,51 +158,43 @@ $(document).ready(function () {
         fetchVolcanoInfo(selectedCountryName);
     }).addTo(map);
 
-    // LayerGroups for cities and airports
-    const cityLayerGroup = L.layerGroup();
-    const airportLayerGroup = L.layerGroup();
-
-    // Marker Clusters for better visualization
-    const cityClusterGroup = L.markerClusterGroup();
-    const airportClusterGroup = L.markerClusterGroup();
-
-    // Add Layer Control
-    const overlayMaps = {
-        "Cities": cityClusterGroup,
-        "Airports": airportClusterGroup,
-    };
-    L.control.layers(null, overlayMaps, { collapsed: false }).addTo(map);
-
     //load borders before populating the dropdown information
     loadCountryBorders().then(() => {
         populateDropDown();
     }).catch(handleError);
 
+    // Handle country selection
     $('#countrySelect').on('change', function () {
         var selectedCountry = this.value;
         if (selectedCountry) {
-            $('#selectedCountry').val(selectedCountry);
-            applyCountryBorder(map, selectedCountry);
+            $('#selectedCountry').val(selectedCountry); // Set the hidden input for the selected country
+            $('#selectedCountryCopy').val(selectedCountry); // Set the second hidden input
+    
+            // Load and apply borders for the selected country (ISO3)
+            loadCountryBorders(selectedCountry).then((data) => {
+                applyCountryBorder(map, data.features);
+            }).catch(handleError);
         }
+    
         if (selectedCountry) {
-            // Clear previous data
+            // Clear previous markers for cities and airports
             cityClusterGroup.clearLayers();
             airportClusterGroup.clearLayers();
     
-            // Fetch new data and populate markers
+            // Fetch and display new data (cities, airports)
             fetchCityInfo(selectedCountry);
             fetchAirportsInfo(selectedCountry);
         }
     });
 
-    //function to retrieve country border information
+    // Load borders based on the ISO3 code (for country selection)
     function loadCountryBorders(selectedCountry) {
         return new Promise((resolve, reject) => {
             $.ajax({
                 type: 'GET',
                 dataType: 'json',
-                url: 'libs/php/borders.php',
-                //data: { selectedCountry: selectedCountry },
+                url: 'libs/php/borders.php',  // Use the borders.php script for ISO3
+                data: { selectedCountry: selectedCountry },
                 success: function (data) {
                     if (data.status.code === "200") {
                         countryBordersData = data; // Store the fetched data
@@ -200,7 +216,7 @@ $(document).ready(function () {
             $.ajax({
                 url: 'libs/php/main.php',
                 method: 'GET',
-                dataType: 'json',
+                dataType: 'json',   
                 success: function (response) {
                     response.data.forEach(function (country) {
                         var option = $('<option>', {
@@ -246,7 +262,6 @@ $(document).ready(function () {
                 console.log('Flag response:', flagResponse);
 
                 if (countryInfoResponse.status.code === 200 && flagResponse.status.code === 200) {
-                    // Return combined data with country info and flag URL
                     return { ...countryInfoResponse.data, flagUrl: flagResponse.flagUrl };
                 } else {
                     throw new Error('Error fetching country info or flag data');
@@ -507,8 +522,6 @@ $('#selectedCountry').on('change', function() {
     
             airportClusterGroup.addLayer(marker); // Add marker to the cluster group
         });
-    
-        // Optionally, zoom to show all airport markers
         map.fitBounds(airportClusterGroup.getBounds());
     }
     
@@ -519,10 +532,10 @@ $('#selectedCountry').on('change', function() {
         console.log('Fetching volcano data from PHP for country code:', countryName);
 
         return $.ajax({
-            url: 'libs/php/volcanoData.php',  // PHP script to get volcano data
+            url: 'libs/php/volcanoData.php',
             method: 'GET',
             dataType: 'json',
-            data: { country: countryName },  // Pass the country code to the PHP script
+            data: { country: countryName }, 
         })
         .then(function (response) {
             console.log('Volcano data fetch response from PHP:', response);
@@ -549,7 +562,7 @@ $('#selectedCountry').on('change', function() {
 
             // Create a custom marker with a volcano icon
             const volcanoIcon = L.icon({
-                iconUrl: '/project1/libs/resources/volcano.png',  // Path to your volcano icon
+                iconUrl: '/project1/libs/resources/volcano.png', 
                 iconSize: [25, 25],  // Adjust size if needed
             });
 
@@ -578,7 +591,7 @@ $('#selectedCountry').on('change', function() {
         $('#volcanoInfoModal').modal('show');
     }
     function fetchCityInfo() {
-        const selectedCountry = $('#selectedCountry').val(); // ISO3 code
+        const selectedCountry = $('#selectedCountry').val() || $('#selectedCountryCopy').val(); // ISO3 code
         console.log(`Fetching top cities by population for country: ${selectedCountry}`);
     
         // Clear previous markers from the cluster group
@@ -616,8 +629,6 @@ $('#selectedCountry').on('change', function() {
     
                         cityClusterGroup.addLayer(marker); // Add marker to the cluster group
                     });
-    
-                    // Optionally, zoom to show all city markers
                     map.fitBounds(cityClusterGroup.getBounds());
                 } else {
                     console.log("No city data available.");
@@ -627,63 +638,25 @@ $('#selectedCountry').on('change', function() {
                 console.error("Error fetching city data:", error);
             },
         });
-    }    
-
-    function applyCountryBorder(map, selectedCountry) {
-        console.log('Applying border for:', selectedCountry);
-        $.ajax({
-            type: 'GET',
-            dataType: 'json',
-            url: 'libs/php/borders.php',
-            data: { selectedCountry: selectedCountry },
-            success: function (response) {
-                if (window.countryBorder && map.hasLayer(window.countryBorder)) {
-                    map.removeLayer(window.countryBorder);
-                }
-
-                window.countryBorder = L.geoJSON(response.features, {
-                    style: {
-                        color: "blue",
-                        weight: 2,
-                        opacity: 1,
-                        fillOpacity: 0.0
-                    }
-                }).addTo(map);
-
-                if (window.countryBorder.getLayers().length > 0) {
-                    var bounds = window.countryBorder.getBounds();
-                    map.fitBounds(bounds);
-                    fetchCountryInfo(selectedCountry);
-                } else {
-                    console.error('No valid bounds found for the selected country.');
-                }
-            },
-            error: function (xhr, status, error) {
-                console.error('AJAX Error:', status, error);
-            }
-        });
     }
-
-    $(window).on('load', function () {
-        $('#preloader').fadeOut('slow', function () {
-            $(this).remove();
-        });
-    });
 
     map.whenReady(function () {
         $('#preloader').fadeOut('slow', function () {
             $(this).remove();
         });
     });
-
-    $('#selectedCountry').on('change', function () {
-        const country = $(this).val();
-        fetchCityInfo(country);
-    });
     
-
-    //var userMarker = null;
-
+    navigator.geolocation.getCurrentPosition(
+        function (position) {
+            console.log("Geolocation successful:", position);
+            geolocation(position);
+        },
+        function (error) {
+            console.error("Geolocation error:", error.message);
+        }
+    );
+    
+    // Geolocation function to reverse geocode and get the ISO2 code
     function geolocation(position) {
         var lat = position.coords.latitude;
         var lng = position.coords.longitude;
@@ -691,64 +664,65 @@ $('#selectedCountry').on('change', function() {
         if (userMarker) {
             map.removeLayer(userMarker);
         }
+
+        // Place user marker
         userMarker = L.marker([lat, lng]).addTo(map)
             .bindPopup('You are here!')
             .openPopup();
 
-        map.setView([lat, lng], 10);
-
+        // Reverse geocode using OpenStreetMap Nominatim API
         $.getJSON(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=3&addressdetails=1`, function (data) {
-            var countryCode = data.address.country_code.toUpperCase();
-            console.log('Country code from geolocation:', countryCode);
-            var iso3Code = getIso3FromIso2(countryCode);
-            if (iso3Code) {
-                $('#countrySelect').val(iso3Code).trigger('change');
-                applyCountryBorder(map, iso3Code);
-            } //else {
-                //console.error('Failed to retrieve ISO3 code for country.');
-            //}
+            var iso2Code = data.address.country_code.toUpperCase(); // Get the ISO2 country code
+            console.log('Country code from geolocation:', iso2Code);
+
+            // Fetch borders based on the ISO2 code (for initial load)
+            fetchBordersByIso2(iso2Code); // Call the function to fetch borders
         }).fail(function () {
             console.error('Failed to retrieve geolocation data.');
         });
     }
-
-    function handleError(error) {
-        console.error('Error:', error.message);
-    }
-
-    function getIso3FromIso2(iso2Code) {
-        if (!countryBordersData) {
-            console.error('Country borders data not available.');
-            return null;
-        }
-        for (var i = 0; i < countryBordersData.features.length; i++) {
-            if (countryBordersData.features[i].properties.iso_a2 === iso2Code) {
-                return countryBordersData.features[i].properties.iso_a3;
+    
+    // Fetch borders based on the ISO2 code (for initial load)
+    function fetchBordersByIso2(iso2Code) {
+        $.ajax({
+            type: 'GET',
+            dataType: 'json',
+            url: 'libs/php/fetchBorderByIso2.php', 
+            data: { iso2Code: iso2Code },
+            success: function (response) {
+                if (response.status.code === "200") {
+                    applyCountryBorder(map, response.features); // Apply the borders to the map
+                } else {
+                    console.error('Borders not found for ISO2:', iso2Code);
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error('AJAX Error:', status, error);
             }
-        }
-        return null;
+        });
     }
-
-    loadCountryBorders().then(() => {
-        var defaultCountry = $('#selectedCountry').val();
-        if (defaultCountry) {
-            applyCountryBorder(map, defaultCountry);
+    
+    // Function to apply borders to the map
+    function applyCountryBorder(map, features) {
+        if (window.countryBorder && map.hasLayer(window.countryBorder)) {
+            map.removeLayer(window.countryBorder);
         }
-    // Check the user's location but do not adjust the map's view
-    navigator.geolocation.getCurrentPosition(
-        geolocation,
-        handleError,
-        { enableHighAccuracy: true }
-    );
-    }).catch(handleError);
 
-    // Define geolocation function to avoid resetting the map view
-    function geolocation(position) {
-        const userLat = position.coords.latitude;
-        const userLng = position.coords.longitude;
-        
-        // Place marker or perform other actions without updating the map's view
-        const userMarker = L.marker([userLat, userLng]).addTo(map);
-        userMarker.bindPopup("Your location").openPopup();
+        window.countryBorder = L.geoJSON(features, {
+            style: {
+                color: "blue",
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.0
+            }
+        }).addTo(map);
+
+        if (window.countryBorder.getLayers().length > 0) {
+            var bounds = window.countryBorder.getBounds();
+            map.fitBounds(bounds);
+        } else {
+            console.error('No valid bounds found for the selected country.');
+        }
     }
+    
 });

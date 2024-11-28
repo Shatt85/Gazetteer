@@ -1,4 +1,9 @@
 <?php
+ini_set('display_errors', 'On');
+error_reporting(E_ALL);
+
+$executionStartTime = microtime(true);
+
 header('Content-Type: application/json');
 
 if (isset($_GET['countryCode'])) {

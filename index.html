@@ -37,13 +37,13 @@
             <!-- populate from an AJAX CALL to a PHP routine that returns a JSON object that is an array of just ISO codes and names from countryBorders.geo.json -->
             <option value="" selected>Select Country</option>
             </select>
-            <input type="hidden" id="selectedCountry" value="GBR" />
+            <input type="hidden" id="selectedCountry" value="" />
         </span>
         
         <div id="map"></div>
     
         
-        <input type="hidden" id="selectedCountry" value="">
+        <input type="hidden" id="selectedCountryCopy" value="">
         <button id="showCountryInfoBtn" style="display: none;">Show Country Info</button>
 
         <!-- Bootstrap Modals -->
@@ -155,7 +155,7 @@
         
 
         <div class="modal fade" id="weatherInfoModal" tabindex="-1" role="dialog" aria-labelledby="weatherInfoModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
                     <h5 class="modal-title" id="weatherInfoModalLabel">Weather Information</h5>
@@ -208,7 +208,7 @@
         </div>
 
         <div class="modal fade" id="newsInfoModal" tabindex="-1" role="dialog" aria-labelledby="newsInfoModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="newsInfoModalLabel">Latest News</h5>
@@ -270,11 +270,9 @@
         <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-        <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.2/jquery.min.js"></script>-->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.6.1/toastify.min.js"></script> 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script> 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-extra-markers/1.2.1/js/leaflet.extra-markers.js"></script> 
-        <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/js/bootstrap.min.js"></script> -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.EasyButton/2.4.0/easy-button.min.js"></script> 
         <script src="libs/js/script.js"></script>
     </body>

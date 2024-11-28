@@ -29,8 +29,8 @@ if (json_last_error() !== JSON_ERROR_NONE) {
 
 // Filter the data by country name if provided (via AJAX)
 if (isset($_GET['country'])) {
-    $country = $_GET['country'];  // Don't change the case here
-    error_log("Country received: $country");  // Log country name for debugging
+    $country = $_GET['country']; 
+    error_log("Country received: $country");
     
     $filteredData = array_filter($volcanoData, function ($volcano) use ($country) {
         return strcasecmp($volcano['country'], $country) === 0;  // Case-insensitive comparison

@@ -5,6 +5,8 @@ error_reporting(E_ALL);
 
 $executionStartTime = microtime(true);
 
+header('Content-Type: application/json');
+
 $countryCode = $_GET['selectedCountry'] ?? ''; // Get selected country from AJAX request
 
 if (!$countryCode) {
